@@ -26,10 +26,10 @@
 #define SnakeSpeedIncrease		0x08
 #define	AppleTicksCycleLength	10
 
-void platInstallRaster();
-void platRemoveRaster();
-void platIRQMultiColourOn();
-void platIRQMultiColourOff();
+void platInstallRaster(void);
+void platRemoveRaster(void);
+void platIRQMultiColourOn(void);
+void platIRQMultiColourOff(void);
 void platPrepAppleTicksBarColumn(char column);
 void platShowTicksToNextAppleColumn(char column, char y1);
 void platShowLogo(char row);

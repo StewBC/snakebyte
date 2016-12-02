@@ -9,12 +9,12 @@
 #ifndef _FRONTEND_H_
 #define _FRONTEND_H_
 
-void frontendInitialSetup();
-bool frontend();
-void frontendShowBonus();
-void frontendShowScore();
-void frontendShowNumSnakes();
-void frontendShowNumApples();
-void frontendShowHud();
+void frontendInitialSetup(void);
+bool frontend(void);
+void frontendShowBonus(void);
+void frontendShowScore(void);
+void frontendShowNumSnakes(void);
+void frontendShowNumApples(void);
+void frontendShowHud(void);
 
 #endif _FRONTEND_H_
