@@ -12,9 +12,9 @@
 #include "game.h"
 #include "frontend.h"
 
-void mainLoop();
-void setup();
-void shutDown();
+void mainLoop(void);
+void setup(void);
+void shutDown(void);
 
 int main()
 {

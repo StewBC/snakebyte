@@ -9,12 +9,12 @@
 #ifndef _GAME_H_
 #define _GAME_H_
 
-void gameInitialSetup();
-void gameSetup();
-void levelSetup();
+void gameInitialSetup(void);
+void gameSetup(void);
+void levelSetup(void);
 char gamePlay(bool userMode);
 bool crash(bool userMode);
-bool exitLevel();
-bool gameOver();
+bool exitLevel(void);
+bool gameOver(void);
 
 #endif _GAME_H_

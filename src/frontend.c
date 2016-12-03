@@ -22,9 +22,9 @@
 #define ScrollHoldTime	20
 #define	PlumTimeout		100
 
-void frontendShowHiScore();
-void frontendShowLevel();
-void frontendDemoStep();
+void frontendShowHiScore(void);
+void frontendShowLevel(void);
+void frontendDemoStep(void);
 
 static char sc_textBuffer[ScreenX];
 static char sc_textLine;
