@@ -1,31 +1,29 @@
 ###############################################################################
 ### Generic Makefile for cc65 projects - full version with abstract options ###
-### V1.1.1 (w) 2010 - 2011 Oliver Schmidt & Patryk "Silver Dream !" Łogiewa ###
+### V1.3.0(w) 2010 - 2013 Oliver Schmidt & Patryk "Silver Dream !" Łogiewa  ###
 ###############################################################################
 
 ###############################################################################
 ### In order to override defaults - values can be assigned to the variables ###
 ###############################################################################
 
+# Space or comma separated list of cc65 supported target platforms to build for.
+# Default: c64 (lowercase!)
+TARGETS :=
+
 # Name of the final, single-file executable.
 # Default: name of the current dir with target name appended
 PROGRAM :=
 
-# Space or comma separated list of cc65 supported targets to build for.
-# Default: c64 (lowercase!)
-TARGETS :=
+# Path(s) to additional libraries required for linking the program
+# Use only if you don't want to place copies of the libraries in SRCDIR
+# Default: none
+LIBS    :=
 
-# Space or comma separated list of SKUs to build for.
-# Default: Same as TARGETS
-SKUS :=
-
-# Path to the directory containing C and ASM sources.
-# Default: src
-SRCDIR :=
-
-# Path to the directory where object files are to be stored (inside respective target subdirectories).
-# Default: obj
-OBJDIR :=
+# Custom linker configuration file
+# Use only if you don't want to place it in SRCDIR
+# Default: none
+CONFIG  :=
 
 # Additional C compiler flags and options.
 # Default: none
@@ -39,15 +37,24 @@ ASFLAGS =
 # Default: none
 LDFLAGS =
 
+# Path to the directory containing C and ASM sources.
+# Default: src
+SRCDIR :=
+
+# Path to the directory where object files are to be stored (inside respective target subdirectories).
+# Default: obj
+OBJDIR :=
+
 # Command used to run the emulator.
 # Default: depending on target platform. For default (c64) target: x64 -kernal kernal -VICIIdsize -autoload
-EMUCMD := open $(PROGRAM)
+EMUCMD :=
 
 # Optional commands used before starting the emulation process, and after finishing it.
 # Default: none
 #PREEMUCMD := osascript -e "tell application \"System Events\" to set isRunning to (name of processes) contains \"X11.bin\"" -e "if isRunning is true then tell application \"X11\" to activate"
 #PREEMUCMD := osascript -e "tell application \"X11\" to activate"
 #POSTEMUCMD := osascript -e "tell application \"System Events\" to tell process \"X11\" to set visible to false"
+#POSTEMUCMD := osascript -e "tell application \"Terminal\" to activate"
 PREEMUCMD :=
 POSTEMUCMD :=
 
@@ -61,7 +68,9 @@ VICE_HOME :=
 # rare cases when you feel you really need to name it differently - here you are
 STATEFILE := Makefile.options
 
+###################################################################################
 ####  DO NOT EDIT BELOW THIS LINE, UNLESS YOU REALLY KNOW WHAT YOU ARE DOING!  ####
+###################################################################################
 
 ###################################################################################
 ### Mapping abstract options to the actual compiler, assembler and linker flags ###
@@ -98,6 +107,12 @@ define _labelfile_
   REMOVES += $(PROGRAM).lbl
 endef
 
+# Linker flags for generating a debug file
+define _debugfile_
+  LDFLAGS += -Wl --dbgfile,$$@.dbg
+  REMOVES += $(PROGRAM).dbg
+endef
+
 ###############################################################################
 ###  Defaults to be used if nothing defined in the editable sections above  ###
 ###############################################################################
@@ -106,12 +121,6 @@ endef
 # Set TARGETS to override.
 ifeq ($(TARGETS),)
   TARGETS := c64
-endif
-
-# Presume the SKUs are the same as the targets.
-# Set SKUS to override.
-ifeq ($(SKUS),)
-  SKUS := $(TARGETS)
 endif
 
 # Presume we're in a project directory so name the program like the current
@@ -132,7 +141,6 @@ ifeq ($(OBJDIR),)
   OBJDIR := obj
 endif
 TARGETOBJDIR := $(OBJDIR)/$(TARGETS)
-TARGETSKUDIR := $(TARGETOBJDIR)/$(SKUS)
 
 # On Windows it is mandatory to have CC65_HOME set. So do not unnecessarily
 # rely on cl65 being added to the PATH in this scenario.
@@ -144,7 +152,8 @@ endif
 
 # Default emulator commands and options for particular targets.
 # Set EMUCMD to override.
-c64_EMUCMD := $(VICE_HOME)x64 -kernal kernal -VICIIdsize -autoload
+cx16_EMUCMD := $(VICE_HOME)x16emu -run -prg
+c64_EMUCMD := $(VICE_HOME)x64 -kernal kernal -VICIIdsize -autostart
 c128_EMUCMD := $(VICE_HOME)x128 -kernal kernal -VICIIdsize -autoload
 vic20_EMUCMD := $(VICE_HOME)xvic -kernal kernal -VICdsize -autoload
 pet_EMUCMD := $(VICE_HOME)xpet -Crtcdsize -autoload
@@ -156,13 +165,37 @@ cbm610_EMUCMD := $(VICE_HOME)xcbm2 -model 610 -Crtcdsize -autoload
 atari_EMUCMD := atari800 -windowed -xl -pal -nopatchall -run
 
 ifeq ($(EMUCMD),)
-  EMUCMD := $($(TARGETS)_EMUCMD)
+  EMUCMD = $($(CC65TARGET)_EMUCMD)
 endif
 
 ###############################################################################
 ### The magic begins                                                        ###
 ###############################################################################
 
+# The "Native Win32" GNU Make contains quite some workarounds to get along with
+# cmd.exe as shell. However it does not provide means to determine that it does
+# actually activate those workarounds. Especially does $(SHELL) NOT contain the
+# value 'cmd.exe'. So the usual way to determine if cmd.exe is being used is to
+# execute the command 'echo' without any parameters. Only cmd.exe will return a
+# non-empy string - saying 'ECHO is on/off'.
+#
+# Many "Native Win32" prorams accept '/' as directory delimiter just fine. How-
+# ever the internal commands of cmd.exe generally require '\' to be used.
+#
+# cmd.exe has an internal command 'mkdir' that doesn't understand nor require a
+# '-p' to create parent directories as needed.
+#
+# cmd.exe has an internal command 'del' that reports a syntax error if executed
+# without any file so make sure to call it only if there's an actual argument.
+ifeq ($(shell echo),)
+  MKDIR = mkdir -p $1
+  RMDIR = rmdir $1
+  RMFILES = $(RM) $1
+else
+  MKDIR = mkdir $(subst /,\,$1)
+  RMDIR = rmdir $(subst /,\,$1)
+  RMFILES = $(if $1,del /f $(subst /,\,$1))
+endif
 COMMA := ,
 SPACE := $(N/A) $(N/A)
 define NEWLINE
@@ -172,31 +205,45 @@ endef
 # Note: Do not remove any of the two empty lines above !
 
 TARGETLIST := $(subst $(COMMA),$(SPACE),$(TARGETS))
-SKULIST := $(subst $(COMMA),$(SPACE),$(SKUS))
 
 ifeq ($(words $(TARGETLIST)),1)
-ifeq ($(words $(SKULIST)),1)
 
-# Set PROGRAM to something like 'myprog-c64.c64'.
-override PROGRAM := $(PROGRAM)-$(SKULIST).$(TARGETLIST)
+# Set PROGRAM to something like 'myprog.c64'.
+override PROGRAM := $(PROGRAM).$(TARGETLIST)
 
 # Set SOURCES to something like 'src/foo.c src/bar.s'.
+# Use of assembler files with names ending differently than .s is deprecated!
 SOURCES := $(wildcard $(SRCDIR)/*.c)
 SOURCES += $(wildcard $(SRCDIR)/*.s)
-SOURCES += $(wildcard $(SRCDIR)/$(SKULIST)/*.c)
-SOURCES += $(wildcard $(SRCDIR)/$(SKULIST)/*.s)
+SOURCES += $(wildcard $(SRCDIR)/*.asm)
+SOURCES += $(wildcard $(SRCDIR)/*.a65)
 
-# Set the CONFIG to something like 'src/c64/myprog.cfg'
-CFGFILE := $(wildcard $(SRCDIR)/$(SKULIST)/*.cfg)
-ifneq ($(strip $(CFGFILE)),)
-CFGFILE := -C $(CFGFILE)
-endif # ($(strip $(CFGFILE)),)
+# Add to SOURCES something like 'src/c64/me.c src/c64/too.s'.
+# Use of assembler files with names ending differently than .s is deprecated!
+SOURCES += $(wildcard $(SRCDIR)/$(TARGETLIST)/*.c)
+SOURCES += $(wildcard $(SRCDIR)/$(TARGETLIST)/*.s)
+SOURCES += $(wildcard $(SRCDIR)/$(TARGETLIST)/*.asm)
+SOURCES += $(wildcard $(SRCDIR)/$(TARGETLIST)/*.a65)
 
-# Set OBJECTS to something like 'obj/target/foo.o obj/target/bar.o'.
-OBJECTS := $(addsuffix .o,$(basename $(SOURCES:$(SRCDIR)%=$(TARGETOBJDIR)%)))
+# Set OBJECTS to something like 'obj/c64/foo.o obj/c64/bar.o'.
+OBJECTS := $(addsuffix .o,$(basename $(addprefix $(TARGETOBJDIR)/,$(notdir $(SOURCES)))))
 
-# Set DEPENDS to something like 'obj/target/foo.d obj/target/bar.d'.
+# Set DEPENDS to something like 'obj/c64/foo.d obj/c64/bar.d'.
 DEPENDS := $(OBJECTS:.o=.d)
+
+# Add to LIBS something like 'src/foo.lib src/c64/bar.lib'.
+LIBS += $(wildcard $(SRCDIR)/*.lib)
+LIBS += $(wildcard $(SRCDIR)/$(TARGETLIST)/*.lib)
+
+# Add to CONFIG something like 'src/c64/bar.cfg src/foo.cfg'.
+CONFIG += $(wildcard $(SRCDIR)/$(TARGETLIST)/*.cfg)
+CONFIG += $(wildcard $(SRCDIR)/*.cfg)
+
+# Select CONFIG file to use. Target specific configs have higher priority.
+ifneq ($(word 2,$(CONFIG)),)
+  CONFIG := $(firstword $(CONFIG))
+  $(info Using config file $(CONFIG) for linking)
+endif
 
 .SUFFIXES:
 .PHONY: all test clean zap love
@@ -218,7 +265,7 @@ ifeq ($(origin OPTIONS),command line)
       $(eval $(STATEFILE):)
     else
       $(info Saving OPTIONS=$(OPTIONS))
-      $(shell echo "_OPTIONS_=$(OPTIONS)" > $(STATEFILE))
+      $(shell echo _OPTIONS_=$(OPTIONS) > $(STATEFILE))
     endif
     $(eval $(OBJECTS): $(STATEFILE))
   endif
@@ -233,21 +280,35 @@ endif
 # Transform the abstract OPTIONS to the actual cc65 options.
 $(foreach o,$(subst $(COMMA),$(SPACE),$(OPTIONS)),$(eval $(_$o_)))
 
+# Strip potential variant suffix from the actual cc65 target.
+CC65TARGET := $(firstword $(subst .,$(SPACE),$(TARGETLIST)))
+
 # The remaining targets.
 $(TARGETOBJDIR):
-	mkdir -p $@
+	$(call MKDIR,$@)
 
-$(TARGETSKUDIR):
-	mkdir -p $@
+vpath %.c $(SRCDIR)/$(TARGETLIST) $(SRCDIR)
 
-$(TARGETOBJDIR)/%.o: $(SRCDIR)/%.c | $(TARGETOBJDIR) $(TARGETSKUDIR)
-	$(CC) -t $(TARGETS) -c --create-dep $(@:.o=.d) $(CFLAGS) -o $@ $<
+$(TARGETOBJDIR)/%.o: %.c | $(TARGETOBJDIR)
+	$(CC) -t $(CC65TARGET) -c --create-dep $(@:.o=.d) $(CFLAGS) -o $@ $<
 
-$(TARGETOBJDIR)/%.o: $(SRCDIR)/%.s | $(TARGETOBJDIR) $(TARGETSKUDIR)
-	$(CC) -t $(TARGETS) -c --create-dep $(@:.o=.d) $(ASFLAGS) -o $@ $<
+vpath %.s $(SRCDIR)/$(TARGETLIST) $(SRCDIR)
 
-$(PROGRAM): $(OBJECTS)
-	$(CC) -t $(TARGETS) $(LDFLAGS) -o $@ $^ $(CFGFILE)
+$(TARGETOBJDIR)/%.o: %.s | $(TARGETOBJDIR)
+	$(CC) -t $(CC65TARGET) -c --create-dep $(@:.o=.d) $(ASFLAGS) -o $@ $<
+
+vpath %.asm $(SRCDIR)/$(TARGETLIST) $(SRCDIR)
+
+$(TARGETOBJDIR)/%.o: %.asm | $(TARGETOBJDIR)
+	$(CC) -t $(CC65TARGET) -c --create-dep $(@:.o=.d) $(ASFLAGS) -o $@ $<
+
+vpath %.a65 $(SRCDIR)/$(TARGETLIST) $(SRCDIR)
+
+$(TARGETOBJDIR)/%.o: %.a65 | $(TARGETOBJDIR)
+	$(CC) -t $(CC65TARGET) -c --create-dep $(@:.o=.d) $(ASFLAGS) -o $@ $<
+
+$(PROGRAM): $(CONFIG) $(OBJECTS) $(LIBS)
+	$(CC) -t $(CC65TARGET) $(LDFLAGS) -o $@ $(patsubst %.cfg,-C %.cfg,$^)
 
 test: $(PROGRAM)
 	$(PREEMUCMD)
@@ -255,17 +316,10 @@ test: $(PROGRAM)
 	$(POSTEMUCMD)
 
 clean:
-	$(RM) $(OBJECTS)
-	$(RM) $(DEPENDS)
-	$(RM) $(REMOVES)
-	$(RM) $(PROGRAM)
-
-else # $(words $(SKULIST)),1
-
-all test clean:
-	$(foreach t,$(SKULIST),$(MAKE) SKUS=$t $@$(NEWLINE))
-
-endif # $(words $(SKULIST)),1
+	$(call RMFILES,$(OBJECTS))
+	$(call RMFILES,$(DEPENDS))
+	$(call RMFILES,$(REMOVES))
+	$(call RMFILES,$(PROGRAM))
 
 else # $(words $(TARGETLIST)),1
 
@@ -277,10 +331,16 @@ endif # $(words $(TARGETLIST)),1
 OBJDIRLIST := $(wildcard $(OBJDIR)/*)
 
 zap:
-	$(foreach o,$(OBJDIRLIST),-$(RM) $o/*.o $o/*.d $o/*.lst$(NEWLINE))
-	$(foreach o,$(OBJDIRLIST),-rmdir $o$(NEWLINE))
-	-rmdir $(OBJDIR)
-	-$(RM) $(basename $(PROGRAM)).* $(STATEFILE)
+	$(foreach o,$(OBJDIRLIST),-$(call RMFILES,$o/*.o $o/*.d $o/*.lst)$(NEWLINE))
+	$(foreach o,$(OBJDIRLIST),-$(call RMDIR,$o)$(NEWLINE))
+	-$(call RMDIR,$(OBJDIR))
+	-$(call RMFILES,$(basename $(PROGRAM)).* $(STATEFILE))
 
 love:
 	@echo "Not war, eh?"
+
+###################################################################
+###  Place your additional targets in the additional Makefiles  ###
+### in the same directory - their names have to end with ".mk"! ###
+###################################################################
+-include *.mk
