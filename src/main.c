@@ -18,6 +18,7 @@ void shutDown(void);
 
 int main()
 {
+	platAudioInit();
 	setup();
 	mainLoop();
 	shutDown();
@@ -84,7 +85,11 @@ void mainLoop()
 			case gSTATE_AllDone:
 				bAllDone = YES;
 			break;
-		}              
+		}
+
+		// update audio playback
+		platAudioTick();
+
 		platSyncEndFrame();
 	}
 }

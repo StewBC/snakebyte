@@ -154,6 +154,7 @@ char gamePlay(bool userMode)
 
 		gc_nextAppleTicks = 0;
 		frontendShowNumApples();
+		platAudioEat();
 		gi_score += si_levelScore ;
 		frontendShowScore();
 		bForce = YES;
@@ -175,11 +176,13 @@ char gamePlay(bool userMode)
 		retVal = gSTATE_Play;
 	else if(gCHAR_Exit == collide)
 	{
+		platAudioExitLevel();
 		frontendShowNumSnakes();
 		retVal = gSTATE_ExitLevel;
 	}
 	else
 	{
+		platAudioCrash();
 		retVal = gSTATE_Crash;
 	}
 	
