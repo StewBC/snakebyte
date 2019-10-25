@@ -18,7 +18,6 @@ void shutDown(void);
 
 int main()
 {
-    int i;
 	platAudioInit();
 	setup();
 	mainLoop();
