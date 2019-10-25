@@ -36,4 +36,10 @@ char platReadFEKeys(void);
 char platReadSpaceKey(void);
 void platFlushKeys(void);
 
+void platAudioInit();
+void platAudioEat();
+void platAudioCrash();
+void platAudioExitLevel();
+void platAudioTick();
+
 #endif _PLAT_H_
