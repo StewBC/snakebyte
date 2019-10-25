@@ -16,7 +16,7 @@
 #include "logocx16.h"
 #include "../frontend.h"
 
-#define SnakeStartSpeed			24
+#define SnakeStartSpeed			32
 #define SnakeSpeedIncrease		0x01
 #define	GridRowHeight			5
 #define	GridRowWidth			4
@@ -171,7 +171,7 @@ void platSyncEndFrame()
 		return;
 
 	// hold here till it's time for the next frame
-	while(clk_l < si_syncSpeed/3);
+	while(clk_l < si_syncSpeed/4);
 }
 
 void platSyncFastSpeed()

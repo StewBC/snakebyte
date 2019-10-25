@@ -48,6 +48,11 @@ The Makefile has the following credits:
 I found it at the link:
 http://wiki.cc65.org/doku.php?id=cc65:project_setup
 
+The following command will build all platforms:
+make TARGETS=c64, c64.text, c64.conio, cx16
+if you have vice or the cx16 emulator in the path, you can use test to make
+and run, i.e. for the cx16 it would be:
+make TARGETS=cx16 test 
 
 IV.     Porting
 
@@ -55,7 +60,7 @@ The source files can be found in the src folder inside the project.  Inside
 the src folder are other folders, namely c64, c64.text, c64.conio and cx16.
 These are the variant specific files that make up the different versions of
 the game, or different platforms, which are all collectively called the
-variants.  The file that's really needed is the target or sku-specific
+variants.  The file that's really needed is the target or variant-specific
 implementation for the functions in plat.h.  If those are provided, and some
 can have empty implementations, the game can be made to work on a target.
 These are the files and why they exist in the C64 folder:
