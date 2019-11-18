@@ -49,7 +49,7 @@ I found it at the link:
 http://wiki.cc65.org/doku.php?id=cc65:project_setup
 
 The following command will build all platforms:
-make TARGETS=c64, c64.text, c64.conio, cx16
+make TARGETS=c64,c64.text,c64.conio,cx16
 if you have vice or the cx16 emulator in the path, you can use test to make
 and run, i.e. for the cx16 it would be:
 make TARGETS=cx16 test 
@@ -109,3 +109,4 @@ to make this possible.
 VIII.   Update (Major Changes Log)
 
 I added the Commander x16 version in Oct 2019.
+Frank Buss added audio in Oct 2019

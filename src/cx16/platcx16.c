@@ -21,11 +21,10 @@
 #define	GridRowHeight			5
 #define	GridRowWidth			4
 #define	AppleTicksCycleLength	10
-#define clk_l 					(*(volatile unsigned char *)0xa2) // it emu r33 this is the fast clock tick location
+#define clk_l 					(*(volatile unsigned char *)0x0294) // it emu r33 this is the fast clock tick location
 
 // forward declarations (not needed) of functions added here that were not in plat.h
 void vaddress(unsigned char hi, unsigned short address);
-void vpoke(unsigned char hi, unsigned short address, unsigned char byte);
 void platShowLogo();
 
 static bool sb_syncActive;
@@ -102,13 +101,6 @@ void vaddress(unsigned char hi, unsigned short address)
 	VERA.address = address;
 }
 
-// Write a byte to data 0 for the address
-void vpoke(unsigned char hi, unsigned short address, unsigned char byte)
-{
-	vaddress(hi, address);
-	VERA.data0 = byte;
-}
-
 void platInitialSetup()
 {
 	int y;
@@ -118,27 +110,27 @@ void platInitialSetup()
 	__asm__("jsr BSOUT");
 
 	// Set screen to 40 x 25
-	vpoke(15, 1, 0x40);
-	vpoke(15, 2, 0x36);
+	vpoke(0x40, 0xf0001);
+	vpoke(0x36, 0xf0002);
 
-	// Hide layer 1
-	vpoke(15, 0x3000, 0xc0);
+	// Hide layer 0
+	vpoke(0xc0, 0xf2000);
 
-	// Set layer 1 memory to $4000
-	vpoke(15, 0x3005, (gfx_address >> 10));
+	// Set layer 0 memory to $4000
+	vpoke((gfx_address >> 10), 0xf2005);
 
 	// Clear the memory (screen)
 	platClearScreen();
 
-	// Show Layer 1
-	vpoke(15, 0x3000, 0xc1);
+	// Show Layer 0
+	vpoke(0xc1, 0xf2000);
 
 	// Enable waiting for the raster
 	VERA.irq_enable |= 1;
 
 	// Install the palette
 	for(y = 0; y<cc_pallette_len; y++)
-		vpoke(15, 0x1000+y, cc_palette[y]);
+		vpoke(cc_palette[y], 0xf1000+y);
 
 	// Set the speed at which to play
 	platSyncGameSpeed();
@@ -199,7 +191,7 @@ void platClearScreen()
 
 	// reset the vscroll
 	sc_scrollOffset = 0;
-	vpoke(15, 0x2008,sc_scrollOffset);
+	vpoke(sc_scrollOffset, 0xf2008);
 
 	// clear layer 1 graphics in assembly
 	__asm__("ldy #208");
@@ -247,7 +239,7 @@ void platPlot(char gx, char gy, char gv)
 	{
 		for(j = 0; j < GridRowWidth ; j++)
 		{
-			vpoke(0, address+j, cc_pixels[gv][i+j]);
+			vpoke(cc_pixels[gv][i+j], address+j);
 		}
 		address += 160;
 	}
@@ -264,7 +256,7 @@ void platPlot(char gx, char gy, char gv)
 				i = (GridRowHeight-1)*GridRowWidth;
 				for(j = 0; j < GridRowWidth ; j++)
 				{
-					vpoke(0, address+j, cc_pixels[gv][i+j]);
+					vpoke(cc_pixels[gv][i+j], address+j);
 				}
 				address += 160;
 			}
@@ -278,7 +270,7 @@ void platPlot(char gx, char gy, char gv)
 			for(j = 0; j < GridRowWidth ; j++)
 			{
 				// copy the top row of the tile over itself
-				vpoke(0, address+j, cc_pixels[gv][j]);
+				vpoke(cc_pixels[gv][j], address+j);
 			}
 		}
 	}
@@ -553,7 +545,7 @@ void platScrollScreenUp()
 {
 	// Scroll layer 0 (text) with the vscroll
 	sc_scrollOffset++;
-	vpoke(15, 0x2008, sc_scrollOffset);
+	vpoke(sc_scrollOffset, 0xf2008);
 
 	// properly scroll layer 1 with vera
 	__asm__("lda #<$4020");
@@ -630,7 +622,7 @@ void platRollColours()
 	// 3 colors, 2 bytes each = 6, at an index 12 (6 color into palette)
 	for(i=0;i<6;i++)
 	{
-		vpoke(15, 0x100c+i, cc_palette[12+((i+offset) % 6)]);
+		vpoke(cc_palette[12+((i+offset) % 6)], 0x100c+i);
 	}
 	offset += 2;
 }
