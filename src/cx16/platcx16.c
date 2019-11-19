@@ -21,7 +21,10 @@
 #define	GridRowHeight			5
 #define	GridRowWidth			4
 #define	AppleTicksCycleLength	10
-#define clk_l 					(*(volatile unsigned char *)0x0294) // it emu r33 this is the fast clock tick location
+
+#define TIME_2 					(*(volatile unsigned char *)0x0294)
+#define VERAP 					0x9F20
+#define VERAS 					struct __vera
 
 // forward declarations (not needed) of functions added here that were not in plat.h
 void vaddress(unsigned char hi, unsigned short address);
@@ -154,7 +157,7 @@ void platSetupLevel()
 void platBeginFrame()
 {
 	// set the clock to 0 to time the frame
-	clk_l = 0;
+	TIME_2 = 0;
 }
 
 void platSyncEndFrame()
@@ -163,7 +166,7 @@ void platSyncEndFrame()
 		return;
 
 	// hold here till it's time for the next frame
-	while(clk_l < si_syncSpeed/4);
+	while(TIME_2 < si_syncSpeed/4);
 }
 
 void platSyncFastSpeed()
@@ -181,7 +184,6 @@ void platAdjustSyncSpeed()
 {
 	si_syncSpeed -= SnakeSpeedIncrease;
 }
-
 void platClearScreen()
 {
 	// clear layer 0 with the conio commands
@@ -202,19 +204,19 @@ void platClearScreen()
 	__asm__("sta tmp2");
 
 	__asm__("lda #$10");
-	__asm__("sta $9f22");
+	__asm__("sta %w + %b", VERAP, offsetof(struct __vera, address_hi));
 
 loopo:
 	__asm__("lda tmp1");
-	__asm__("sta $9f20");
+	__asm__("sta %w + %b", VERAP, offsetof(struct __vera, address));
 	__asm__("lda tmp2");
-	__asm__("sta $9f21");
+	__asm__("sta %w + %b + 1", VERAP, offsetof(struct __vera, address));
 
 	__asm__("ldx #160");
 	__asm__("lda #0");
 
 loopi:
-	__asm__("sta $9f23");
+	__asm__("sta %w + %b", VERAP, offsetof(struct __vera, data0));
 	__asm__("dex");
 	__asm__("bne %g", loopi);
 	__asm__("dey");
@@ -306,35 +308,35 @@ void platShowTextSliver(char textPosY, char sliver, const char *szText)
 		// so all done in asm to minimize time taken
 		// Wait for a vertical blank
 vbl:
-		__asm__("lda $9f27");
+		__asm__("lda %w + %b", VERAP, offsetof(VERAS, irq_enable));
 		__asm__("bne %g", vbl);
 
 		// reset the vscroll 
 		__asm__("lda #$0f");
-		__asm__("sta $9f22");
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, address_hi));
 		__asm__("lda #$08");
-		__asm__("sta $9f20");
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, address));
 		__asm__("lda #$20");
-		__asm__("sta $9f21");
+		__asm__("sta %w + %b + 1", VERAP, offsetof(VERAS, address));
 		__asm__("lda #0");
-		__asm__("sta $9f23");
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, data0));
 
 		// set data0 to point at 0 and data1 to point at tmp2, with a stride of 2 (skip the color)
 		__asm__("lda #$20");
-		__asm__("sta $9f22");
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, address_hi));
 		__asm__("lda #0");
-		__asm__("sta $9f20");
-		__asm__("sta $9f21");
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, address));
+		__asm__("sta %w + %b + 1", VERAP, offsetof(VERAS, address));
 		__asm__("lda #1");
-		__asm__("sta $9f25");
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, control));
 		__asm__("lda #$20");
-		__asm__("sta $9f22 ");
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, address_hi));
 		__asm__("lda #0");
-		__asm__("sta $9f20");
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, address));
 		__asm__("lda tmp2");
-		__asm__("sta $9f21");
+		__asm__("sta %w + %b + 1", VERAP, offsetof(VERAS, address));
 		__asm__("lda #0");
-		__asm__("sta $9f25");
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, control));
 
 		// rows to scroll in Y
 		// the screen size reports 80x60 - it's just not looking at the
@@ -347,8 +349,8 @@ loopo:
 
 loopi:
 		// copy the lower (on screen) row over the higher row (scroll up)
-		__asm__("lda $9f24");
-		__asm__("sta $9f23");
+		__asm__("lda %w + %b", VERAP, offsetof(VERAS, data1));
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, data0));
 
 		// do for all columns
 		__asm__("dex");
@@ -364,22 +366,22 @@ loopi:
 
 		// update the data0 and data1 address lines
 		__asm__("lda #0");
-		__asm__("sta $9f20");
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, address));
 
 		__asm__("lda tmp1");
-		__asm__("sta $9f21");
+		__asm__("sta %w + %b + 1", VERAP, offsetof(VERAS, address));
 
 		__asm__("lda #1");
-		__asm__("sta $9f25");
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, control));
 
 		__asm__("lda #0");
-		__asm__("sta $9f20");
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, address));
 
 		__asm__("lda tmp2");
-		__asm__("sta $9f21");
+		__asm__("sta %w + %b + 1", VERAP, offsetof(VERAS, address));
 
 		__asm__("lda #0");
-		__asm__("sta $9f25");
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, control));
 
 		// a = 0 so jmp back to outer loop
 		__asm__("beq %g", loopo);
@@ -434,10 +436,10 @@ void platShowTicksToNextAppleColumn(char column, char y1)
 			// shrivels
 			vaddress(0x10, offseta);
 			__asm__("lda tmp1");
-			__asm__("sta $9f23");
-			__asm__("sta $9f23");
-			__asm__("sta $9f23");
-			__asm__("sta $9f23");
+			__asm__("sta %w + %b", VERAP, offsetof(VERAS, data0));
+			__asm__("sta %w + %b", VERAP, offsetof(VERAS, data0));
+			__asm__("sta %w + %b", VERAP, offsetof(VERAS, data0));
+			__asm__("sta %w + %b", VERAP, offsetof(VERAS, data0));
 			offseta -= 160;
 		}
 
@@ -447,10 +449,10 @@ void platShowTicksToNextAppleColumn(char column, char y1)
 		{
 			vaddress(0x10, offseta);
 			__asm__("lda tmp2");
-			__asm__("sta $9f23");
-			__asm__("sta $9f23");
-			__asm__("sta $9f23");
-			__asm__("sta $9f23");
+			__asm__("sta %w + %b", VERAP, offsetof(VERAS, data0));
+			__asm__("sta %w + %b", VERAP, offsetof(VERAS, data0));
+			__asm__("sta %w + %b", VERAP, offsetof(VERAS, data0));
+			__asm__("sta %w + %b", VERAP, offsetof(VERAS, data0));
 			offseta -= 160;
 		}
 	}
@@ -461,10 +463,10 @@ void platShowTicksToNextAppleColumn(char column, char y1)
 	{
 		vaddress(0x10, offseta);
 		__asm__("lda tmp3");
-		__asm__("sta $9f23");
-		__asm__("sta $9f23");
-		__asm__("sta $9f23");
-		__asm__("sta $9f23");
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, data0));
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, data0));
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, data0));
+		__asm__("sta %w + %b", VERAP, offsetof(VERAS, data0));
 		offseta -= 160;
 	}
 }
@@ -508,17 +510,17 @@ void platShowLogo()
 
 	// set up vera
 	__asm__("lda #$10");
-	__asm__("sta $9f22");
+	__asm__("sta %w + %b", VERAP, offsetof(VERAS, address_hi));
 loopo:
 	__asm__("lda ptr2+1");
-	__asm__("sta $9f21");
+	__asm__("sta %w + %b + 1", VERAP, offsetof(VERAS, address));
 	__asm__("lda ptr2");
-	__asm__("sta $9f20");
+	__asm__("sta %w + %b", VERAP, offsetof(VERAS, address));
 	__asm__("ldx #95"); // LogoCols
 	__asm__("ldy #0");
 loopi:
 	__asm__("lda (ptr1),y");
-	__asm__("sta $9f23");
+	__asm__("sta %w + %b", VERAP, offsetof(VERAS, data0));
 	__asm__("iny");
 	__asm__("dex");
 	__asm__("bne %g", loopi);
@@ -563,36 +565,36 @@ void platScrollScreenUp()
 
 	// set up vera
 	__asm__("lda #$10");
-	__asm__("sta $9f22");
+	__asm__("sta %w + %b", VERAP, offsetof(VERAS, address_hi));
 	// switch to data1
 	__asm__("lda #1");
-	__asm__("sta $9f25");
+	__asm__("sta %w + %b", VERAP, offsetof(VERAS, control));
 	__asm__("lda #$10");
-	__asm__("sta $9f22");
+	__asm__("sta %w + %b", VERAP, offsetof(VERAS, address_hi));
 loopo:
 	__asm__("lda ptr2+1");
-	__asm__("sta $9f21");
+	__asm__("sta %w + %b + 1", VERAP, offsetof(VERAS, address));
 	__asm__("lda ptr2");
-	__asm__("sta $9f20");
+	__asm__("sta %w + %b", VERAP, offsetof(VERAS, address));
 	// switch to data0
 	__asm__("lda #0");
-	__asm__("sta $9f25");
+	__asm__("sta %w + %b", VERAP, offsetof(VERAS, control));
 	__asm__("lda ptr1+1");
-	__asm__("sta $9f21");
+	__asm__("sta %w + %b + 1", VERAP, offsetof(VERAS, address));
 	__asm__("lda ptr1");
-	__asm__("sta $9f20");
+	__asm__("sta %w + %b", VERAP, offsetof(VERAS, address));
 	// setup for cols to scroll
 	__asm__("ldx #95"); // LogoCols
 loopi:
-	__asm__("lda $9f24");
-	__asm__("sta $9f23");
+	__asm__("lda %w + %b", VERAP, offsetof(VERAS, data1));
+	__asm__("sta %w + %b", VERAP, offsetof(VERAS, data0));
 	__asm__("dex");
 	__asm__("bne %g", loopi);
 	__asm__("dey");
 	__asm__("beq %g", done);
 
 	__asm__("lda #1");
-	__asm__("sta $9f25");
+	__asm__("sta %w + %b", VERAP, offsetof(VERAS, control));
 
 	__asm__("lda #160");
 	__asm__("clc");
