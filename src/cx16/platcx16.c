@@ -305,9 +305,10 @@ void platShowTextSliver(char textPosY, char sliver, const char *szText)
 		// scrolled image flash for a brief second, at the top
 		// so all done in asm to minimize time taken
 		// Wait for a vertical blank
+		__asm__("lda %w", (unsigned)&TIME_2);
 vbl:
-		__asm__("lda %w", (unsigned)&VERA.irq_enable);
-		__asm__("bne %g", vbl);
+		__asm__("cmp %w", (unsigned)&TIME_2);
+		__asm__("beq %g", vbl);
 
 		// reset the vscroll 
 		__asm__("lda #$0f");
@@ -622,7 +623,7 @@ void platRollColours()
 	// 3 colors, 2 bytes each = 6, at an index 12 (6 color into palette)
 	for(i=0;i<6;i++)
 	{
-		vpoke(cc_palette[12+((i+offset) % 6)], 0x100c+i);
+		vpoke(cc_palette[12+((i+offset) % 6)], 0xf100c+i);
 	}
 	offset += 2;
 }
