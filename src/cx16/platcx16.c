@@ -9,6 +9,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 #include <conio.h>
 #include <cx16.h>
 #include "../globals.h"
@@ -21,8 +22,6 @@
 #define	GridRowHeight			5
 #define	GridRowWidth			4
 #define	AppleTicksCycleLength	10
-
-#define TIME_2 					(*(volatile unsigned char *)0x0294)
 
 // forward declarations (not needed) of functions added here that were not in plat.h
 void vaddress(unsigned char hi, unsigned short address);
@@ -107,8 +106,7 @@ void platInitialSetup()
 	int y;
 
 	// switch back to uppercase
-	__asm__("lda #142");
-	__asm__("jsr BSOUT");
+	cbm_k_bsout(CH_FONT_UPPER);
 
 	// Set screen to 40 x 25
 	vpoke(0x40, 0xf0001);
@@ -155,7 +153,7 @@ void platSetupLevel()
 void platBeginFrame()
 {
 	// set the clock to 0 to time the frame
-	TIME_2 = 0;
+	cbm_k_settim(0);
 }
 
 void platSyncEndFrame()
@@ -163,8 +161,8 @@ void platSyncEndFrame()
 	if(!sb_syncActive)
 		return;
 
-	// hold here till it's time for the next frame
-	while(TIME_2 < si_syncSpeed/4);
+	// hold here 'till it's time for the next frame
+	while((unsigned)clock() < si_syncSpeed/4);
 }
 
 void platSyncFastSpeed()
@@ -301,14 +299,11 @@ void platShowTextSliver(char textPosY, char sliver, const char *szText)
 		__asm__("lsr");
 		__asm__("sta tmp2");
 		
-		// This is time-critical or you end up seeing the
-		// scrolled image flash for a brief second, at the top
-		// so all done in asm to minimize time taken
-		// Wait for a vertical blank
-		__asm__("lda %w", (unsigned)&TIME_2);
-vbl:
-		__asm__("cmp %w", (unsigned)&TIME_2);
-		__asm__("beq %g", vbl);
+		// This is time-critical, or you end up seeing the
+		// scrolled image flash for a brief second, at the top.
+		// So, mostly done in asm, to minimize time taken.
+		// Wait for a vertical blank.
+		waitvsync();
 
 		// reset the vscroll 
 		__asm__("lda #$0f");
