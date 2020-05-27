@@ -33,7 +33,7 @@ static char sc_scrollOffset;
 unsigned char sc_colourCycleIndex;
 static unsigned char timePixels;
 
-const unsigned short gfx_address = 0x4000;
+#define gfx_address  0x4000
 const char cc_appleTicksCycleSpeed[AppleTicksCycleLength] = {8, 8, 7, 7, 6, 6, 5, 5, 4, 3};
 
 // format is gr, 0b for rbg colours, indexed from 0
@@ -109,30 +109,33 @@ void platInitialSetup()
 	cbm_k_bsout(CH_FONT_UPPER);
 
 	// Set screen to 40 x 25
-	vpoke(0x40, 0xf0001);
-	vpoke(0x36, 0xf0002);
+	VERA.display.hscale = 0x40;
+	VERA.display.vscale = 0x36;
 
 	// Hide layer 0
-	vpoke(0xc0, 0xf2000);
+	VERA.display.video  &= 0b11101111;
 
 	// Set layer 0 memory to $4000
-	vpoke((gfx_address >> 10), 0xf2005);
+	VERA.layer0.tilebase = (gfx_address >> 9);
 
 	// Clear the memory (screen)
 	platClearScreen();
 
 	// Show Layer 0
-	vpoke(0xc1, 0xf2000);
+	VERA.display.video  |= 0b00010000;
 
 	// Enable waiting for the raster
 	VERA.irq_enable |= 1;
 
 	// Install the palette
 	for(y = 0; y<cc_pallette_len; y++)
-		vpoke(cc_palette[y], 0xf1000+y);
+		vpoke(cc_palette[y], 0x1fa00+y);
 
 	// Set the speed at which to play
 	platSyncGameSpeed();
+
+	// Set layer 0 to Graphics mode
+	VERA.layer0.config |= 6;
 }
 
 void platSetupGame()
@@ -189,14 +192,14 @@ void platClearScreen()
 
 	// reset the vscroll
 	sc_scrollOffset = 0;
-	vpoke(sc_scrollOffset, 0xf2008);
+	VERA.layer1.vscroll = sc_scrollOffset;
 
 	// clear layer 1 graphics in assembly
 	__asm__("ldy #208");
 
-	__asm__("lda #0");
+	__asm__("lda #<%w", gfx_address);
 	__asm__("sta tmp1");
-	__asm__("lda #$40");
+	__asm__("lda #>%w", gfx_address);
 	__asm__("sta tmp2");
 
 	__asm__("lda #$10");
@@ -304,16 +307,7 @@ void platShowTextSliver(char textPosY, char sliver, const char *szText)
 		// So, mostly done in asm, to minimize time taken.
 		// Wait for a vertical blank.
 		waitvsync();
-
-		// reset the vscroll 
-		__asm__("lda #$0f");
-		__asm__("sta %w", (unsigned)&VERA.address_hi);
-		__asm__("lda #$08");
-		__asm__("sta %w", (unsigned)&VERA.address);
-		__asm__("lda #$20");
-		__asm__("sta %w + 1", (unsigned)&VERA.address);
-		__asm__("lda #0");
-		__asm__("sta %w", (unsigned)&VERA.data0);
+		VERA.layer1.vscroll = 0;
 
 		// set data0 to point at 0 and data1 to point at tmp2, with a stride of 2 (skip the color)
 		__asm__("lda #$20");
@@ -382,7 +376,7 @@ loopi:
 
 done:
 		sc_scrollOffset = 0;
-
+		
 		// Show the next line of text, but off-screen
 		platShowTextAligned(0, textPosY + 3, szText);
 	}
@@ -539,11 +533,11 @@ done: ;
 
 void platScrollScreenUp()
 {
-	// Scroll layer 0 (text) with the vscroll
 	sc_scrollOffset++;
-	vpoke(sc_scrollOffset, 0xf2008);
+	// Scroll layer 1 (text) with the vscroll
+	VERA.layer1.vscroll = sc_scrollOffset;
 
-	// properly scroll layer 1 with vera
+	// properly scroll layer 0 (graphic) with vera
 	__asm__("lda #<$4020");
 	__asm__("sta ptr1");
 	__asm__("lda #>$4020");
@@ -618,7 +612,7 @@ void platRollColours()
 	// 3 colors, 2 bytes each = 6, at an index 12 (6 color into palette)
 	for(i=0;i<6;i++)
 	{
-		vpoke(cc_palette[12+((i+offset) % 6)], 0xf100c+i);
+		vpoke(cc_palette[12+((i+offset) % 6)], 0x1fa0c+i);
 	}
 	offset += 2;
 }
